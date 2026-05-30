@@ -1,73 +1,82 @@
-# React + TypeScript + Vite
+# SkyPlanets
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**See which planets are visible from your location, right now.**
 
-Currently, two official plugins are available:
+SkyPlanets is a web app that tells you which planets are above the horizon
+tonight, where to look for them, and when they rise, peak, and set. It combines
+your location, the current time, and astronomical calculations to answer one
+simple question in plain language: *what can I see in the sky right now?*
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+![SkyPlanets — planets in view tonight](docs/hero.png)
 
-## React Compiler
+## What it does
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Planets visible now** — a live list of Mercury, Venus, Mars, Jupiter,
+  Saturn, Uranus, and Neptune, sorted by how easy each one is to spot.
+- **Interactive sky map** — a circular dome view where the center is straight
+  up and the edge is the horizon. Each planet is plotted by its real altitude
+  and compass direction, with dotted trails tracing its path over the next
+  24 hours.
+- **Time scrubber** — drag through the next 48 hours to see how the sky changes,
+  or tap **Now** to jump back to the present moment.
+- **Plain-language guidance** — every planet shows its direction (e.g. *WNW*),
+  altitude, rise/set times, and apparent magnitude, with a clear status badge.
+- **Weather context** — a cloud-cover badge tells you whether the sky is
+  actually clear enough to observe.
 
-## Expanding the ESLint configuration
+![Planet visibility list](docs/planets.png)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Visibility status
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Each planet is classified using its altitude and the Sun's position:
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+| Status | Meaning |
+| --- | --- |
+| **Visible now** | Above 10° and the sky is dark (Sun below −6°) |
+| **Low on horizon** | Between 0° and 10° in a dark sky |
+| **Not in view** | Below the horizon, or the sky is too bright |
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Tech stack
+
+- [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
+- [Vite](https://vite.dev/) for development and bundling
+- [astronomy-engine](https://github.com/cosinekitty/astronomy) for topocentric
+  planet positions, rise/set, and magnitude calculations (computed locally in
+  the browser)
+- [Open-Meteo](https://open-meteo.com/) free APIs for geocoding (city search)
+  and cloud-cover weather — no API key required
+
+## Getting started
+
+```bash
+# install dependencies
+npm install
+
+# start the dev server
+npm run dev
+
+# build for production
+npm run build
+
+# preview the production build
+npm run preview
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The app opens at the URL printed by Vite (typically `http://localhost:5173`).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## How it works
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+1. SkyPlanets requests your location (with consent). If you decline, you can
+   search for any city instead.
+2. For the selected location and time, it calculates each planet's altitude and
+   azimuth locally using `astronomy-engine` — no observing data leaves your
+   device.
+3. Results are presented as a sky map and a ranked list, with weather pulled
+   from Open-Meteo for observing context.
+
+## Privacy
+
+Your location is used only to compute planet positions and fetch local weather.
+Coordinates are not stored on a server.
+
+> Visibility ignores local terrain and obstructions (buildings, hills, trees).
