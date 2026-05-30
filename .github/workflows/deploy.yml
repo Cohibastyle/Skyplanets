@@ -1,0 +1,70 @@
+name: Deploy to skyplanets.yenchoi.com
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'skyplanets/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-skyplanets
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: skyplanets
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: skyplanets/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Write .htaccess (SPA fallback + HTTPS redirect)
+        run: |
+          cat > dist/.htaccess <<'HTACCESS'
+          # SPA fallback for React single-page app
+          <IfModule mod_rewrite.c>
+            RewriteEngine On
+            RewriteBase /
+            RewriteRule ^index\.html$ - [L]
+            RewriteCond %{REQUEST_FILENAME} !-f
+            RewriteCond %{REQUEST_FILENAME} !-d
+            RewriteRule . /index.html [L]
+          </IfModule>
+
+          # Force HTTPS (required for Geolocation API)
+          <IfModule mod_rewrite.c>
+            RewriteCond %{HTTPS} off
+            RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+          </IfModule>
+          HTACCESS
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "${{ secrets.DEPLOY_SSH_PORT }}" -H "${{ secrets.DEPLOY_SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy via rsync
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/id_deploy -p ${{ secrets.DEPLOY_SSH_PORT }}" \
+            dist/ \
+            "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/"
